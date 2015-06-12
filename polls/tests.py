@@ -37,17 +37,27 @@ class QuestionMethodTest(TestCase):
         self.assertTrue(recent_question.was_published_recently())
 
 
-def create_question(question_text, days):
+def create_question(question_text, days, comments=True):
     """
     Creates a question with the given `question_text` published the given
     number of `days` offset of now (negative for questions published in the
     past, positive for questions to be published in the future)
     """
     time = timezone.now() + datetime.timedelta(days=days)
-    return Question.objects.create(question_text=question_text, pub_date=time)
+    question = Question.objects.create(
+        question_text=question_text,
+        pub_date=time
+    )
+    if comments:
+        Choice.objects.create(
+            question=question,
+            choice_text="Choice text",
+            votes=1
+        )
+    return question
 
 
-class QuestionViewTests(TestCase):
+class IndexViewTests(TestCase):
 
     def test_index_view_with_no_questions(self):
         """
@@ -64,6 +74,11 @@ class QuestionViewTests(TestCase):
         page
         """
         create_question(question_text="Past question", days=-30)
+        create_question(
+            question_text="Past question without comment",
+            days=-30,
+            comments=False
+        )
         response = self.client.get(reverse('polls:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
@@ -76,6 +91,11 @@ class QuestionViewTests(TestCase):
         index page
         """
         create_question(question_text="Future question", days=30)
+        create_question(
+            question_text="Future question without comment",
+            days=30,
+            comments=False
+        )
         response = self.client.get(reverse('polls:index'))
         self.assertQuerysetEqual(response.context['latest_question_list'], [])
 
@@ -86,6 +106,16 @@ class QuestionViewTests(TestCase):
         """
         create_question(question_text="Past question", days=-30)
         create_question(question_text="Future question", days=30)
+        create_question(
+            question_text="Past question without comment",
+            days=-30,
+            comments=False
+        )
+        create_question(
+            question_text="Future question without comment",
+            days=30,
+            comments=False
+        )
         response = self.client.get(reverse('polls:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
@@ -98,6 +128,16 @@ class QuestionViewTests(TestCase):
         """
         create_question(question_text="Past question 1", days=-30)
         create_question(question_text="Past question 2", days=-5)
+        create_question(
+            question_text="Past question without comment",
+            days=-30,
+            comments=False
+        )
+        create_question(
+            question_text="Past question without comment",
+            days=-5,
+            comments=False
+        )
         response = self.client.get(reverse('polls:index'))
         self.assertQuerysetEqual(
             response.context['latest_question_list'],
@@ -105,7 +145,7 @@ class QuestionViewTests(TestCase):
         )
 
 
-class QuestionDetailTests(TestCase):
+class DetailViewTests(TestCase):
 
     def test_detail_view_with_a_future_question(self):
         """
@@ -133,14 +173,15 @@ class QuestionDetailTests(TestCase):
                             status_code=200)
 
 
-class QuestionResultsTests(TestCase):
+class ResultsViewTests(TestCase):
 
     def test_results_view_with_a_future_question(self):
         """
         The results view of a future question should return error 404
         """
         future_question = create_question(
-            question_text="Future question", days=5
+            question_text="Future question",
+            days=5
         )
         response = self.client.get(
             reverse('polls:results', args=(future_question.id,))
@@ -153,7 +194,7 @@ class QuestionResultsTests(TestCase):
 
         """
         past_question = create_question(
-            question_text="Past question", days=-30
+            question_text="Past question", days=-30, comments=False
         )
         choice_1 = Choice.objects.create(
             question=past_question,

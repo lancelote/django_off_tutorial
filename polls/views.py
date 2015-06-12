@@ -17,7 +17,8 @@ class IndexView(generic.ListView):
         published in the future
         """
         return Question.objects.filter(
-            pub_date__lte=timezone.now()
+            pub_date__lte=timezone.now(),
+            choice__isnull=False
         ).order_by('-pub_date')[:5]
 
 
@@ -29,7 +30,10 @@ class DetailView(generic.DetailView):
         """
         Exclude any questions that aren't published yet
         """
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return Question.objects.filter(
+            pub_date__lte=timezone.now(),
+            choice__isnull=False
+        )
 
 
 class ResultsView(generic.DetailView):
@@ -40,7 +44,9 @@ class ResultsView(generic.DetailView):
         """
         Exclude any questions that aren't published yet
         """
-        return Question.objects.filter(pub_date__lte=timezone.now())
+        return Question.objects.filter(
+            pub_date__lte=timezone.now()
+        )
 
 
 def vote(request, question_id):
