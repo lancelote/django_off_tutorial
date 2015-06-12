@@ -4,7 +4,7 @@ from django.test import TestCase
 from django.utils import timezone
 from django.core.urlresolvers import reverse
 
-from .models import Question
+from .models import Question, Choice
 
 
 class QuestionMethodTest(TestCase):
@@ -105,7 +105,7 @@ class QuestionViewTests(TestCase):
         )
 
 
-class QuestionIndexDetailTests(TestCase):
+class QuestionDetailTests(TestCase):
 
     def test_detail_view_with_a_future_question(self):
         """
@@ -131,3 +131,53 @@ class QuestionIndexDetailTests(TestCase):
         )
         self.assertContains(response, past_question.question_text,
                             status_code=200)
+
+
+class QuestionResultsTests(TestCase):
+
+    def test_results_view_with_a_future_question(self):
+        """
+        The results view of a future question should return error 404
+        """
+        future_question = create_question(
+            question_text="Future question", days=5
+        )
+        response = self.client.get(
+            reverse('polls:results', args=(future_question.id,))
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_results_view_with_a_past_question(self):
+        """
+        The results view of a past question should display question text and
+
+        """
+        past_question = create_question(
+            question_text="Past question", days=-30
+        )
+        choice_1 = Choice.objects.create(
+            question=past_question,
+            choice_text="Choice 1",
+            votes=1
+        )
+        choice_2 = Choice.objects.create(
+            question=past_question,
+            choice_text="Choice 2",
+            votes=2
+        )
+        response = self.client.get(
+            reverse('polls:results', args=(past_question.id,))
+        )
+        self.assertContains(
+            response,
+            past_question.question_text,
+            status_code=200
+        )
+        self.assertContains(
+            response,
+            "{0} -- {1} vote".format(choice_1.choice_text, choice_1.votes)
+        )
+        self.assertContains(
+            response,
+            "{0} -- {1} vote".format(choice_2.choice_text, choice_2.votes)
+        )
